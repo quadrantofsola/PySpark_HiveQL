@@ -1,0 +1,211 @@
+For creating all tables, I have taken help from the official documentation of Databricks at the following link. https://docs.databricks.com/spark/latest/spark-sql/language-manual/sql-ref-syntax-ddl-create-table-using.html
+
+CREATE TABLE IF NOT EXISTS clinicaltrial_2021 (Id STRING,
+  Sponsor STRING,
+  Status STRING,
+  Start STRING,
+  Completion STRING,
+  Type STRING,
+  Submission STRING,
+  Conditions STRING,
+  Intervention STRING)
+USING CSV 
+OPTIONS (header = 'true', delimiter = '|') 
+LOCATION '/FileStore/tables/clinicaltrial_2021.csv';
+OK
+CREATE TABLE IF NOT EXISTS mesh (term STRING,
+  tree STRING)
+USING CSV 
+OPTIONS (header = 'true',delimiter = ',') 
+LOCATION '/FileStore/tables/mesh.csv';
+OK
+CREATE TABLE IF NOT EXISTS pharma (Company STRING,
+  Parent_Company STRING,
+  Penalty_Amount STRING,
+  Subtraction_From_Penalty STRING,
+  Penalty_Amount_Adjusted_For_Eliminating_Multiple_Counting STRING,
+  Penalty_Year STRING,
+  Penalty_Date STRING,
+  Offense_Group STRING,
+  Primary_Offense STRING,
+  Secondary_Offense STRING,
+  Description STRING,
+  Level_of_Government STRING,
+  Action_Type STRING,
+  Agency STRING,
+  Civil_Criminal STRING,
+  Prosecution_Agreement STRING,
+  Court STRING,
+  Case_ID STRING,
+  Private_Litigation_Case_Title STRING,
+  Lawsuit_Resolution STRING,
+  Facility_State STRING,
+  City STRING,
+  Address STRING,
+  Zip STRING,
+  NAICS_Code STRING,
+  NAICS_Translation STRING,
+  HQ_Country_of_Parent STRING,
+  HQ_State_of_Parent STRING,
+  Ownership_Structure STRING,
+  Parent_Company_Stock_Ticker STRING,
+  Major_Industry_of_Parent STRING,
+  Specific_Industry_of_Parent STRING,
+  Info_Source STRING,
+  Notes STRING)
+USING CSV 
+OPTIONS (header = 'true', delimiter = ',') 
+LOCATION '/FileStore/tables/pharma.csv';
+OK
+-- problem statement 1
+ 
+select distinct(count(*)) from clinicaltrial_2021;
+ 
+count(1)
+1
+387261
+Showing all 1 rows.
+
+-- problem statement 2
+ 
+select Type, count(*) as ct from clinicaltrial_2021 group by Type order by ct desc limit 4;
+ 
+Type
+ct
+1
+2
+3
+4
+Interventional
+301472
+Observational
+77540
+Observational [Patient Registry]
+8180
+Expanded Access
+69
+Showing all 4 rows.
+
+-- problem statement 3
+ 
+select a.cond, count(*) as ct from (select Sponsor, explode(split(Conditions, ',')) as cond from clinicaltrial_2021)a group by a.cond order by ct DESC limit 5;
+ 
+cond
+ct
+1
+2
+3
+4
+5
+Carcinoma
+13389
+Diabetes Mellitus
+11080
+Neoplasms
+9371
+Breast Neoplasms
+8640
+Syndrome
+8032
+Showing all 5 rows.
+
+-- problem statement 4
+ 
+select b.tree, count(*) as ct from (select a.cond, m.tree from (select explode(split(c.Conditions, ',')) as cond from clinicaltrial_2021 c)a
+INNER JOIN
+(SELECT term, split(tree, '[\.]')[0] as tree from mesh) m on a.cond==m.term)b group by b.tree order by ct DESC limit 5;
+ 
+tree
+ct
+1
+2
+3
+4
+5
+C04
+143994
+C23
+136079
+C01
+106674
+C14
+94523
+C10
+92310
+Showing all 5 rows.
+
+-- problem statement 5
+ 
+select Sponsor, count(*) as ct from clinicaltrial_2021 where Sponsor not in (select Parent_Company from pharma) group by Sponsor order by ct DESC limit 10;
+ 
+Sponsor
+ct
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+National Cancer Institute (NCI)
+3218
+M.D. Anderson Cancer Center
+2414
+Assistance Publique - Hôpitaux de Paris
+2369
+Mayo Clinic
+2300
+Merck Sharp & Dohme Corp.
+2243
+Assiut University
+2154
+Novartis Pharmaceuticals
+2088
+Massachusetts General Hospital
+1971
+Cairo University
+1928
+Hoffmann-La Roche
+1828
+Showing all 10 rows.
+
+-- problem statement 6
+ 
+select a.completion[0], count(*) as ct from (select split(Completion, ' ') as completion, Status from clinicaltrial_2021 where Status=='Completed' and split(Completion, ' ')[1]=='2021')a group by a.completion ORDER by ct DESC limit 12;
+ 
+completion[0]
+ct
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+Mar
+1227
+Jan
+1131
+Jun
+1094
+May
+984
+Apr
+967
+Feb
+934
+Jul
+819
+Aug
+700
+Sep
+528
+Oct
+187
+Showing all 10 rows.
